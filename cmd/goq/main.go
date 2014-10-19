@@ -1,9 +1,19 @@
 package main
 
 import (
-	"fmt"
+	"os"
+
+	flags "github.com/jessevdk/go-flags"
+	"github.com/monochromegane/goq"
 )
 
+var opts goq.Option
+
 func main() {
-	fmt.Printf("Hello, goq\n")
+	args, err := flags.Parse(&opts)
+	if err != nil {
+		os.Exit(1)
+	}
+
+	goq.Query(args[0], args[1])
 }
