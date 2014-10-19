@@ -10,7 +10,9 @@ import (
 
 func Query(target, query string) {
 
-	db, err := sql.Open("driver", "dsn")
+	config := loadConfig()
+	t := config.find(target)
+	db, err := sql.Open(t.Driver, t.Dsn)
 	if err != nil {
 		log.Fatal(err)
 	}
