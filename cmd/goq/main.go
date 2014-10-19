@@ -4,6 +4,7 @@ import (
 	"os"
 
 	flags "github.com/jessevdk/go-flags"
+	"github.com/monochromegane/goban"
 	"github.com/monochromegane/goq"
 )
 
@@ -15,5 +16,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	goq.Query(args[0], args[1])
+	columns, rows := goq.Query(args[0], args[1])
+
+	goban.Render(columns, rows)
 }

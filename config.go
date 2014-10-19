@@ -17,6 +17,7 @@ type Target struct {
 	Driver string `json:"driver"`
 	Dsn    string `json:"dsn"`
 	Dir    string `json:"query_dir"`
+	Prefix string `json:"prefix"`
 }
 
 func loadConfig() Config {
