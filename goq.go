@@ -11,7 +11,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func Query(target, query string) ([]string, [][]string) {
+func Query(target, queryName string) ([]string, [][]string) {
 
 	config := loadConfig()
 	t := config.find(target)
@@ -23,18 +23,12 @@ func Query(target, query string) ([]string, [][]string) {
 		log.Fatal(err)
 	}
 
-	q, err := queryFile.find(query)
+	q, err := queryFile.find(queryName)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	stmt, err := db.Prepare(q)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer stmt.Close()
-
-	rows, err := stmt.Query()
+	rows, err := query(db, q)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -76,4 +70,18 @@ func (q queryFile) find(name string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("%d not found.", name)
+}
+
+func query(db *sql.DB, query string) (*sql.Rows, error) {
+	stmt, err := db.Prepare(query)
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	rows, err := stmt.Query()
+	if err != nil {
+		return nil, err
+	}
+	return rows, err
 }
