@@ -11,24 +11,47 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func Query(target, queryName string) ([]string, [][]string) {
+func Query(targetName, queryName string) ([]string, [][]string) {
 
 	config := loadConfig()
-	t := config.find(target)
-
-	queryFile := queryFile{dir: t.Dir, prefix: t.Prefix}
-
-	db, err := sql.Open(t.Driver, t.Dsn)
+	target, err := config.Find(targetName)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	q, err := queryFile.find(queryName)
+	q, err := findQuery(target.Dir, target.Prefix, queryName)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	rows, err := query(db, q)
+	db, err := sql.Open(target.Driver, target.Dsn)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	return query(db, q)
+}
+
+func findQuery(dir, prefix, name string) (string, error) {
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return "", err
+	}
+	for _, f := range files {
+		if f.Name()[:strings.LastIndex(f.Name(), ".")] == prefix+name {
+			bytes, err := ioutil.ReadFile(filepath.Join(dir, f.Name()))
+			if err != nil {
+				return "", err
+			}
+			return string(bytes), nil
+		}
+	}
+	return "", fmt.Errorf("%s not found.", name)
+}
+
+func query(db *sql.DB, q string) ([]string, [][]string) {
+	rows, err := getRows(db, q)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -47,32 +70,9 @@ func Query(target, queryName string) ([]string, [][]string) {
 	rows.Close()
 
 	return columns, values
-
 }
 
-type queryFile struct {
-	dir    string
-	prefix string
-}
-
-func (q queryFile) find(name string) (string, error) {
-	files, err := ioutil.ReadDir(q.dir)
-	if err != nil {
-		return "", err
-	}
-	for _, f := range files {
-		if f.Name()[:strings.LastIndex(f.Name(), ".")] == q.prefix+name {
-			bytes, err := ioutil.ReadFile(filepath.Join(q.dir, f.Name()))
-			if err != nil {
-				return "", err
-			}
-			return string(bytes), nil
-		}
-	}
-	return "", fmt.Errorf("%d not found.", name)
-}
-
-func query(db *sql.DB, query string) (*sql.Rows, error) {
+func getRows(db *sql.DB, query string) (*sql.Rows, error) {
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return nil, err

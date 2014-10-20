@@ -2,6 +2,7 @@ package goq
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
@@ -35,8 +36,11 @@ func loadConfig() Config {
 	return config
 }
 
-func (c Config) find(key string) Target {
-	return c.Targets[key]
+func (c Config) Find(name string) (Target, error) {
+	if t, exist := c.Targets[name]; exist {
+		return t, nil
+	}
+	return Target{}, fmt.Errorf("%s not found.", name)
 }
 
 func getHomeDir() string {
