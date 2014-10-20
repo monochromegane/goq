@@ -2,6 +2,7 @@ package goq
 
 import (
 	"database/sql"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"path/filepath"
@@ -14,24 +15,17 @@ func Query(target, query string) ([]string, [][]string) {
 
 	config := loadConfig()
 	t := config.find(target)
+
+	queryFile := queryFile{dir: t.Dir, prefix: t.Prefix}
+
 	db, err := sql.Open(t.Driver, t.Dsn)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	files, err := ioutil.ReadDir(t.Dir)
+	q, err := queryFile.find(query)
 	if err != nil {
 		log.Fatal(err)
-	}
-	var q string
-	for _, f := range files {
-		if f.Name()[:strings.LastIndex(f.Name(), ".")] == t.Prefix+query {
-			bytes, err := ioutil.ReadFile(filepath.Join(t.Dir, f.Name()))
-			if err != nil {
-				log.Fatal(err)
-			}
-			q = string(bytes)
-		}
 	}
 
 	stmt, err := db.Prepare(q)
@@ -60,4 +54,26 @@ func Query(target, query string) ([]string, [][]string) {
 
 	return columns, values
 
+}
+
+type queryFile struct {
+	dir    string
+	prefix string
+}
+
+func (q queryFile) find(name string) (string, error) {
+	files, err := ioutil.ReadDir(q.dir)
+	if err != nil {
+		return "", err
+	}
+	for _, f := range files {
+		if f.Name()[:strings.LastIndex(f.Name(), ".")] == q.prefix+name {
+			bytes, err := ioutil.ReadFile(filepath.Join(q.dir, f.Name()))
+			if err != nil {
+				return "", err
+			}
+			return string(bytes), nil
+		}
+	}
+	return "", fmt.Errorf("%d not found.", name)
 }
