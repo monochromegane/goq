@@ -11,7 +11,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-func Query(targetName, queryName string) ([]string, [][]string) {
+func Query(targetName, queryName string, args ...string) ([]string, [][]string) {
 
 	config := loadConfig()
 	target, err := config.Find(targetName)
@@ -30,7 +30,7 @@ func Query(targetName, queryName string) ([]string, [][]string) {
 	}
 	defer db.Close()
 
-	return query(db, q)
+	return query(db, q, args)
 }
 
 func findQuery(dir, prefix, name string) (string, error) {
@@ -50,8 +50,8 @@ func findQuery(dir, prefix, name string) (string, error) {
 	return "", fmt.Errorf("%s not found.", name)
 }
 
-func query(db *sql.DB, q string) ([]string, [][]string) {
-	rows, err := getRows(db, q)
+func query(db *sql.DB, q string, args []string) ([]string, [][]string) {
+	rows, err := getRows(db, q, args)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -72,14 +72,18 @@ func query(db *sql.DB, q string) ([]string, [][]string) {
 	return columns, values
 }
 
-func getRows(db *sql.DB, query string) (*sql.Rows, error) {
+func getRows(db *sql.DB, query string, args []string) (*sql.Rows, error) {
 	stmt, err := db.Prepare(query)
 	if err != nil {
 		return nil, err
 	}
 	defer stmt.Close()
 
-	rows, err := stmt.Query()
+	vals := make([]interface{}, len(args))
+	for i, v := range args {
+		vals[i] = v
+	}
+	rows, err := stmt.Query(vals...)
 	if err != nil {
 		return nil, err
 	}

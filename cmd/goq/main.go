@@ -16,7 +16,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	columns, rows := goq.Query(args[0], args[1])
+	columns, rows := goq.Query(args[0], args[1], args[2:]...)
 
 	goban.Render(columns, rows)
 }
