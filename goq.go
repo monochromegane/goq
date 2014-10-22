@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"log"
 	"path/filepath"
-	"strings"
 
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -47,50 +46,37 @@ func Query(targetName, queryName string, args ...string) ([]string, [][]string) 
 	}
 	defer db.Close()
 
-	return query(db, q, args)
+	return doQuery(db, q, args)
 }
 
-type q struct {
-	file   string
-	prefix string
-}
-
-func (query q) name() string {
-	return strings.TrimPrefix(query.file[:strings.LastIndex(query.file, ".")], query.prefix)
-}
-
-func listQuery(dir, prefix string) ([]q, error) {
-	var list []q
+func listQuery(dir, prefix string) ([]query, error) {
+	var list []query
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return list, err
 	}
 	for _, f := range files {
 		if filepath.HasPrefix(f.Name(), prefix) {
-			list = append(list, q{file: f.Name(), prefix: prefix})
+			list = append(list, query{dir: dir, file: f.Name(), prefix: prefix})
 		}
 	}
 	return list, nil
 }
 
 func findQuery(dir, prefix, name string) (string, error) {
-	files, err := ioutil.ReadDir(dir)
+	queries, err := listQuery(dir, prefix)
 	if err != nil {
 		return "", err
 	}
-	for _, f := range files {
-		if f.Name()[:strings.LastIndex(f.Name(), ".")] == prefix+name {
-			bytes, err := ioutil.ReadFile(filepath.Join(dir, f.Name()))
-			if err != nil {
-				return "", err
-			}
-			return string(bytes), nil
+	for _, q := range queries {
+		if q.name() == name {
+			return q.query()
 		}
 	}
 	return "", fmt.Errorf("%s not found.", name)
 }
 
-func query(db *sql.DB, q string, args []string) ([]string, [][]string) {
+func doQuery(db *sql.DB, q string, args []string) ([]string, [][]string) {
 	rows, err := getRows(db, q, args)
 	if err != nil {
 		log.Fatal(err)
