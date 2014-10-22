@@ -11,6 +11,23 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+func List(targetName string) {
+	config := loadConfig()
+
+	for name, target := range config.Targets {
+		if name != targetName {
+			continue
+		}
+		list, err := listQuery(target.Dir, target.Prefix)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, q := range list {
+			fmt.Printf("%s\n", q.name())
+		}
+	}
+}
+
 func Query(targetName, queryName string, args ...string) ([]string, [][]string) {
 
 	config := loadConfig()
@@ -31,6 +48,29 @@ func Query(targetName, queryName string, args ...string) ([]string, [][]string) 
 	defer db.Close()
 
 	return query(db, q, args)
+}
+
+type q struct {
+	file   string
+	prefix string
+}
+
+func (query q) name() string {
+	return strings.TrimPrefix(query.file[:strings.LastIndex(query.file, ".")], query.prefix)
+}
+
+func listQuery(dir, prefix string) ([]q, error) {
+	var list []q
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return list, err
+	}
+	for _, f := range files {
+		if filepath.HasPrefix(f.Name(), prefix) {
+			list = append(list, q{file: f.Name(), prefix: prefix})
+		}
+	}
+	return list, nil
 }
 
 func findQuery(dir, prefix, name string) (string, error) {
